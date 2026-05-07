@@ -529,114 +529,172 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
       {/* Content area */}
       <main className="flex-1 px-6 py-4">
         {!progress.v2_answer ? (
+          /* ── No V2 yet: show V1 only ── */
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-3">V1 Answer (Original)</p>
             <MarkdownView content={data.v1Answer} />
           </div>
+
         ) : activeTab === 'side-by-side' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* V1 — always rendered */}
+          /* ── Side-by-side: V1 left | V2 + feedback + QC right ── */
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+
+            {/* Left — V1 */}
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-3">V1 (Original)</p>
               <MarkdownView content={data.v1Answer} />
             </div>
 
-            {/* V2 — preview/edit toggle */}
-            <div className="relative bg-white rounded-xl border border-gray-200 p-5 flex flex-col">
-              {(generating || fixing) && (
-                <Spinner label={generating ? 'Generating V2…' : 'Applying fix…'} />
-              )}
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">V2 (Improved)</p>
-                <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
-                  {(['preview', 'edit'] as const).map((m) => (
+            {/* Right — V2 + Reviewer Feedback + V2 QC stacked */}
+            <div className="flex flex-col gap-4">
+
+              {/* V2 answer card */}
+              <div className="relative bg-white rounded-xl border border-gray-200 p-5 flex flex-col">
+                {(generating || fixing) && (
+                  <Spinner label={generating ? 'Generating V2…' : 'Applying fix…'} />
+                )}
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">V2 (Improved)</p>
+                  <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+                    {(['preview', 'edit'] as const).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setV2Mode(m)}
+                        className={`px-3 py-1 font-medium transition-colors ${
+                          v2Mode === m ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {m === 'preview' ? 'Preview' : 'Edit'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {v2Mode === 'preview' ? (
+                  <MarkdownView content={v2Edited} />
+                ) : (
+                  <textarea
+                    className="flex-1 text-sm text-gray-900 leading-relaxed resize-none outline-none min-h-64 font-mono"
+                    value={v2Edited}
+                    onChange={(e) => setV2Edited(e.target.value)}
+                    spellCheck={false}
+                  />
+                )}
+              </div>
+
+              {/* Reviewer Feedback — directly below V2 */}
+              <div className="relative bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-3">
+                {fixing && <Spinner label="Applying fix…" />}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewer Feedback</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Describe what to fix — Gemini will apply it to V2 without a full rewrite</p>
+                </div>
+                <textarea
+                  className="w-full text-sm text-gray-900 leading-relaxed resize-none outline-none min-h-24 border border-gray-100 rounded-lg p-3 bg-gray-50 focus:bg-white focus:border-gray-300 transition-colors"
+                  placeholder="e.g. Add a point about the Supreme Court's 2023 judgment on forest rights. Replace the Polavaram example with the Ken-Betwa river linking project."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleFix}
+                    disabled={fixing || !notes.trim()}
+                    className="px-4 py-2 text-sm font-medium bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {fixing ? 'Applying fix…' : 'Apply Fix to V2'}
+                  </button>
+                  {undoSnapshot && !fixing && (
                     <button
-                      key={m}
-                      onClick={() => setV2Mode(m)}
-                      className={`px-3 py-1 font-medium transition-colors ${
-                        v2Mode === m ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
-                      }`}
+                      onClick={handleUndo}
+                      className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                     >
-                      {m === 'preview' ? 'Preview' : 'Edit'}
+                      ↩ Undo Fix
                     </button>
-                  ))}
+                  )}
                 </div>
               </div>
 
-              {v2Mode === 'preview' ? (
-                <MarkdownView content={v2Edited} />
+              {/* V2 QC — below reviewer feedback */}
+              {progress.v2_qc_report ? (
+                <div className="relative">
+                  {fixing && <Spinner label="Re-evaluating V2…" />}
+                  <QCCard
+                    report={progress.v2_qc_report}
+                    title="Improved Answer Quality"
+                    subtitle="Self-evaluation of the V2 answer"
+                    theme="indigo"
+                  />
+                </div>
               ) : (
+                <div className="relative bg-indigo-50 border border-indigo-100 rounded-xl p-5 flex items-center justify-center min-h-20">
+                  {(generating || fixing) && <Spinner label="Evaluating V2…" />}
+                  {!generating && !fixing && (
+                    <p className="text-sm text-indigo-300">V2 QC will appear after generation</p>
+                  )}
+                </div>
+              )}
+
+            </div>
+          </div>
+
+        ) : (
+          /* ── Diff view ── */
+          <div className="flex flex-col gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <DiffView parts={diffParts} />
+            </div>
+
+            {/* Feedback + QC below diff */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              <div className="relative bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-3">
+                {fixing && <Spinner label="Applying fix…" />}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewer Feedback</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Describe what to fix — Gemini will apply it to V2 without a full rewrite</p>
+                </div>
                 <textarea
-                  className="flex-1 text-sm text-gray-900 leading-relaxed resize-none outline-none min-h-64 font-mono"
-                  value={v2Edited}
-                  onChange={(e) => setV2Edited(e.target.value)}
-                  spellCheck={false}
+                  className="w-full text-sm text-gray-900 leading-relaxed resize-none outline-none min-h-24 border border-gray-100 rounded-lg p-3 bg-gray-50 focus:bg-white focus:border-gray-300 transition-colors"
+                  placeholder="e.g. Add a point about the Supreme Court's 2023 judgment on forest rights. Replace the Polavaram example with the Ken-Betwa river linking project."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                 />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleFix}
+                    disabled={fixing || !notes.trim()}
+                    className="px-4 py-2 text-sm font-medium bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {fixing ? 'Applying fix…' : 'Apply Fix to V2'}
+                  </button>
+                  {undoSnapshot && !fixing && (
+                    <button
+                      onClick={handleUndo}
+                      className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      ↩ Undo Fix
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {progress.v2_qc_report ? (
+                <div className="relative">
+                  {fixing && <Spinner label="Re-evaluating V2…" />}
+                  <QCCard
+                    report={progress.v2_qc_report}
+                    title="Improved Answer Quality"
+                    subtitle="Self-evaluation of the V2 answer"
+                    theme="indigo"
+                  />
+                </div>
+              ) : (
+                <div className="relative bg-indigo-50 border border-indigo-100 rounded-xl p-5 flex items-center justify-center min-h-20">
+                  {(generating || fixing) && <Spinner label="Evaluating V2…" />}
+                  {!generating && !fixing && (
+                    <p className="text-sm text-indigo-300">V2 QC will appear after generation</p>
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <DiffView parts={diffParts} />
-          </div>
-        )}
-
-        {/* Bottom row: Reviewer Feedback (left) + V2 QC (right) */}
-        {progress.v2_answer && (
-          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-
-            {/* Left — Reviewer Feedback + Apply Fix */}
-            <div className="relative bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-3">
-              {fixing && <Spinner label="Applying fix…" />}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewer Feedback</p>
-                <p className="text-xs text-gray-400 mt-0.5">Describe what to fix — Gemini will apply it to V2 without a full rewrite</p>
-              </div>
-              <textarea
-                className="w-full text-sm text-gray-900 leading-relaxed resize-none outline-none min-h-24 border border-gray-100 rounded-lg p-3 bg-gray-50 focus:bg-white focus:border-gray-300 transition-colors"
-                placeholder="e.g. Add a point about the Supreme Court's 2023 judgment on forest rights. Replace the Polavaram example with the Ken-Betwa river linking project."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleFix}
-                  disabled={fixing || !notes.trim()}
-                  className="px-4 py-2 text-sm font-medium bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {fixing ? 'Applying fix…' : 'Apply Fix to V2'}
-                </button>
-                {undoSnapshot && !fixing && (
-                  <button
-                    onClick={handleUndo}
-                    className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    ↩ Undo Fix
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Right — V2 QC */}
-            {progress.v2_qc_report ? (
-              <div className="relative">
-                {fixing && <Spinner label="Re-evaluating V2…" />}
-                <QCCard
-                  report={progress.v2_qc_report}
-                  title="Improved Answer Quality"
-                  subtitle="Self-evaluation of the V2 answer — honest assessment of what's still improvable"
-                  theme="indigo"
-                />
-              </div>
-            ) : (
-              <div className="relative bg-indigo-50 border border-indigo-100 rounded-xl p-5 flex items-center justify-center min-h-32">
-                {(generating || fixing) && <Spinner label="Evaluating V2…" />}
-                {!generating && !fixing && (
-                  <p className="text-sm text-indigo-300">V2 QC will appear after generation</p>
-                )}
-              </div>
-            )}
-
           </div>
         )}
       </main>
