@@ -55,7 +55,6 @@ A V2 answer must:
 6. Include at least 1 real-world example (India-specific preferred)
 7. Have a conclusion that goes beyond summary — suggests a way forward
 8. Stay within the word limit: 200–220 words (10M) or 270–300 words (15M)
-9. Feel "enriching" to the student — they should feel they learned something
 
 ## UPSC ANSWER STYLE
 - Use **bold** for key terms, reports, schemes, articles
