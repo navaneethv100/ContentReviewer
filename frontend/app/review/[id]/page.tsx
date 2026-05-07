@@ -370,15 +370,6 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
           <p className="text-sm font-semibold text-gray-900 truncate">{data.question}</p>
         </div>
         <div className="flex gap-2 shrink-0">
-          {!progress.v2_answer && !progress.accepted_v1 && (
-            <button
-              onClick={handleAcceptV1}
-              disabled={saving}
-              className="px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-            >
-              Accept V1 as Final
-            </button>
-          )}
           <button
             onClick={handleGenerate}
             disabled={generating}
@@ -393,7 +384,14 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
                 disabled={saving}
                 className="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
               >
-                Confirm
+                Confirm V2
+              </button>
+              <button
+                onClick={handleAcceptV1}
+                disabled={saving}
+                className="px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+              >
+                Keep V1
               </button>
               <button
                 onClick={() => handleSave('skipped')}
