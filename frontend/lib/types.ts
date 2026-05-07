@@ -27,6 +27,7 @@ export type ReviewStatus = 'pending' | 'generated' | 'confirmed' | 'skipped'
 
 export interface ProgressEntry {
   status: ReviewStatus
+  accepted_v1?: boolean
   demand_brief?: DemandBrief
   qc_report?: QCReport
   v2_answer?: string

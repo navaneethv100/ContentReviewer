@@ -270,6 +270,21 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
     }
   }
 
+  const handleAcceptV1 = async () => {
+    setSaving(true)
+    try {
+      await fetch(`/api/questions/${id}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ v2_answer: data?.v1Answer, accepted_v1: true, status: 'confirmed' }),
+      })
+      await loadData()
+      showToast('V1 accepted as final answer')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSave = async (status: 'confirmed' | 'skipped') => {
     setUndoSnapshot(null)
     setSaving(true)
@@ -355,6 +370,15 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
           <p className="text-sm font-semibold text-gray-900 truncate">{data.question}</p>
         </div>
         <div className="flex gap-2 shrink-0">
+          {!progress.v2_answer && !progress.accepted_v1 && (
+            <button
+              onClick={handleAcceptV1}
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+            >
+              Accept V1 as Final
+            </button>
+          )}
           <button
             onClick={handleGenerate}
             disabled={generating}

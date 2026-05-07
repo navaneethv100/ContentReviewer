@@ -11,6 +11,7 @@ export async function POST(
     v2_qc_report?: QCReport
     reviewer_notes?: string
     status?: ReviewStatus
+    accepted_v1?: boolean
   }
 
   const existing = getEntry(id)
@@ -19,6 +20,7 @@ export async function POST(
     ...(body.v2_answer !== undefined && { v2_answer: body.v2_answer }),
     ...(body.v2_qc_report !== undefined && { v2_qc_report: body.v2_qc_report }),
     ...(body.reviewer_notes !== undefined && { reviewer_notes: body.reviewer_notes }),
+    ...(body.accepted_v1 !== undefined && { accepted_v1: body.accepted_v1 }),
     status: body.status ?? 'confirmed',
     confirmed_at: new Date().toISOString(),
   })

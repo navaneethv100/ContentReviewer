@@ -102,9 +102,13 @@ export default function Dashboard() {
                 </div>
                 <div className="flex flex-col items-end gap-2 shrink-0">
                   <span
-                    className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[q.progress.status]}`}
+                    className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                      q.progress.accepted_v1
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : STATUS_COLORS[q.progress.status]
+                    }`}
                   >
-                    {STATUS_LABELS[q.progress.status]}
+                    {q.progress.accepted_v1 ? 'Original ✓' : STATUS_LABELS[q.progress.status]}
                   </span>
                   <span className="text-xs text-gray-400">{q.marks}M</span>
                 </div>
