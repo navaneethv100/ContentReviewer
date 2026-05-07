@@ -123,36 +123,84 @@ function DiffView({ parts }: { parts: DiffPart[] }) {
   )
 }
 
-function DemandCard({ brief }: { brief: DemandBrief }) {
+function Chevron({ open }: { open: boolean }) {
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm space-y-2">
-      <h3 className="font-semibold text-blue-900 text-xs uppercase tracking-wide">Demand Brief</h3>
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <span className="text-blue-700 font-medium">Directive:</span>{' '}
-          <span className="text-blue-900">{brief.directive}</span>
+    <svg
+      className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  )
+}
+
+function DemandCard({ brief }: { brief: DemandBrief }) {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Demand Brief</span>
+          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">
+            {brief.directive}
+          </span>
+          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+            ~{brief.word_limit}w
+          </span>
         </div>
-        <div>
-          <span className="text-blue-700 font-medium">Angle:</span>{' '}
-          <span className="text-blue-900">{brief.angle}</span>
-        </div>
-        <div>
-          <span className="text-blue-700 font-medium">Word Limit:</span>{' '}
-          <span className="text-blue-900">~{brief.word_limit}</span>
-        </div>
-      </div>
-      <div>
-        <span className="text-blue-700 font-medium">Topic:</span>{' '}
-        <span className="text-blue-900">{brief.topic}</span>
-      </div>
-      {brief.sub_demands.length > 0 && (
-        <div>
-          <span className="text-blue-700 font-medium">Sub-demands:</span>
-          <ul className="mt-1 list-disc list-inside text-blue-900 space-y-0.5">
-            {brief.sub_demands.map((d, i) => (
-              <li key={i}>{d}</li>
-            ))}
-          </ul>
+        <Chevron open={open} />
+      </button>
+
+      {open && (
+        <div className="border-t border-gray-100 px-4 py-4 space-y-4">
+          {/* Topic */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Topic</p>
+            <p className="text-sm text-gray-800 leading-snug">{brief.topic}</p>
+          </div>
+
+          {/* Metadata row */}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Directive</p>
+              <span className="inline-block text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-lg">
+                {brief.directive}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Angle</p>
+              <p className="text-sm text-gray-700">{brief.angle}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Word Limit</p>
+              <span className="inline-block text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200 px-2.5 py-1 rounded-lg">
+                ~{brief.word_limit} words
+              </span>
+            </div>
+          </div>
+
+          {/* Sub-demands */}
+          {brief.sub_demands.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
+                Sub-demands ({brief.sub_demands.length})
+              </p>
+              <ol className="space-y-2">
+                {brief.sub_demands.map((d, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold flex items-center justify-center mt-0.5">
+                      {i + 1}
+                    </span>
+                    <span className="text-sm text-gray-700 leading-snug">{d}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -167,44 +215,83 @@ interface QCCardProps {
 }
 
 function QCCard({ report, title, subtitle, theme }: QCCardProps) {
-  const scoreColor =
-    report.score >= 7 ? 'text-green-700' : report.score >= 4 ? 'text-yellow-700' : 'text-red-700'
+  const [open, setOpen] = useState(true)
 
-  const t = theme === 'amber'
-    ? { bg: 'bg-amber-50', border: 'border-amber-200', heading: 'text-amber-900', sub: 'text-amber-600', label: 'text-amber-800', body: 'text-amber-900' }
-    : { bg: 'bg-indigo-50', border: 'border-indigo-200', heading: 'text-indigo-900', sub: 'text-indigo-500', label: 'text-indigo-800', body: 'text-indigo-900' }
+  const score = report.score
+  const scoreLabel = score >= 8 ? 'Excellent' : score >= 6 ? 'Good' : score >= 4 ? 'Fair' : 'Weak'
+  const scoreRing = score >= 7 ? 'text-green-600 bg-green-50 border-green-200'
+    : score >= 4 ? 'text-amber-600 bg-amber-50 border-amber-200'
+    : 'text-red-600 bg-red-50 border-red-200'
 
   return (
-    <div className={`${t.bg} ${t.border} border rounded-xl p-4 text-sm space-y-3`}>
-      <div className="flex items-center justify-between">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+      >
         <div>
-          <h3 className={`font-semibold ${t.heading} text-xs uppercase tracking-wide`}>{title}</h3>
-          <p className={`${t.sub} text-xs mt-0.5`}>{subtitle}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
         </div>
-        <span className={`text-2xl font-bold ${scoreColor}`}>{report.score}/10</span>
-      </div>
-      {report.issues.length > 0 && (
-        <div>
-          <p className={`font-medium ${t.label} mb-1`}>Issues:</p>
-          <ul className={`list-disc list-inside ${t.body} space-y-0.5`}>
-            {report.issues.map((issue, i) => <li key={i}>{issue}</li>)}
-          </ul>
+        <div className="flex items-center gap-3">
+          <div className={`flex flex-col items-center border rounded-lg px-3 py-1 ${scoreRing}`}>
+            <span className="text-lg font-bold leading-none">{score}</span>
+            <span className="text-[9px] font-semibold uppercase tracking-wide opacity-80 leading-none mt-0.5">{scoreLabel}</span>
+          </div>
+          <Chevron open={open} />
         </div>
-      )}
-      {report.missing_elements.length > 0 && (
-        <div>
-          <p className={`font-medium ${t.label} mb-1`}>Missing:</p>
-          <ul className={`list-disc list-inside ${t.body} space-y-0.5`}>
-            {report.missing_elements.map((el, i) => <li key={i}>{el}</li>)}
-          </ul>
-        </div>
-      )}
-      {report.strengths.length > 0 && (
-        <div>
-          <p className={`font-medium ${t.label} mb-1`}>Strengths:</p>
-          <ul className={`list-disc list-inside ${t.body} space-y-0.5`}>
-            {report.strengths.map((s, i) => <li key={i}>{s}</li>)}
-          </ul>
+      </button>
+
+      {open && (
+        <div className="border-t border-gray-100 divide-y divide-gray-100">
+          {report.strengths.length > 0 && (
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-green-600 mb-2 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                Strengths
+              </p>
+              <ul className="space-y-1.5">
+                {report.strengths.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="text-green-500 mt-1 flex-shrink-0 text-[8px]">●</span>
+                    <span className="leading-snug">{s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {report.issues.length > 0 && (
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-red-500 mb-2 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />
+                Issues
+              </p>
+              <ul className="space-y-1.5">
+                {report.issues.map((issue, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="text-red-400 mt-1 flex-shrink-0 text-[8px]">●</span>
+                    <span className="leading-snug">{issue}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {report.missing_elements.length > 0 && (
+            <div className="px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-600 mb-2 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+                Missing
+              </p>
+              <ul className="space-y-1.5">
+                {report.missing_elements.map((el, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="text-amber-400 mt-1 flex-shrink-0 text-[8px]">●</span>
+                    <span className="leading-snug">{el}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
