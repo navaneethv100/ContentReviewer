@@ -1,0 +1,244 @@
+================================================================================
+CONTENT REVIEWER - UPSC CSE MAINS PYQ ANSWER QUALITY PIPELINE
+================================================================================
+Project Owner : Navaneeth
+Date Created  : 2026-05-05
+Purpose       : Semi-automated review, quality-check, and improvement of ~240
+                UPSC CSE Mains PYQ answers (2023, 2024, 2025 papers)
+================================================================================
+
+
+PROBLEM STATEMENT
+-----------------
+Manually reviewing 240 UPSC Mains answers is time-consuming and inconsistent.
+Answers need to be checked against the exact demand of each question, then
+improved with better structure, facts, quotes, figures, and examples — all
+while preserving the UPSC answer style that students expect.
+
+
+SOLUTION OVERVIEW
+-----------------
+A pipeline tool that:
+  1. Reads questions + existing answers from Google Sheets
+  2. Extracts the exact "demand" of each question via UPSC directive word logic
+  3. Quality-checks the existing answer against that demand
+  4. Generates an improved V2 answer
+  5. Presents a human-readable diff (V1 vs V2) on a dashboard
+  6. Allows the human to prompt for further fixes, edit V2, and confirm
+
+
+================================================================================
+PIPELINE — STEP BY STEP
+================================================================================
+
+STEP 1 — DATA INGESTION
+------------------------
+Source   : Google Sheets (columns: Year | Paper | Question | Existing Answer)
+Action   : Pull data via Google Sheets API into the app
+Output   : Structured list of Question objects
+
+STEP 2 — QUESTION DEMAND EXTRACTION
+-------------------------------------
+Input    : Raw question text
+Process  :
+  - Identify the UPSC Directive Word (see Directive Words List below)
+  - Extract the core subject/topic being asked
+  - Extract any sub-parts (a, b, c if present)
+  - Identify implicit demands (e.g., "suggest reforms" implied by context)
+  - Identify the angle: factual / analytical / critical / evaluative
+Prompt   : Claude is given the directive word definitions and asked to produce
+           a structured "Demand Brief" — a JSON object with:
+             { directive, topic, sub_demands[], angle, word_limit_hint }
+Output   : Demand Brief per question
+
+UPSC DIRECTIVE WORDS LIST (with expected answer behavior):
+  - Discuss        → Present multiple dimensions, pros/cons, balanced view
+  - Examine        → Investigate and evaluate critically, present evidence
+  - Critically Examine → As above, but explicitly highlight limitations/flaws
+  - Analyze        → Break into components, explain each, show relationships
+  - Assess/Evaluate → Make a judgement, weigh evidence, conclude
+  - Comment        → Briefly explain your view with reasoning
+  - Explain        → Clarify the concept/mechanism clearly
+  - Describe       → Give factual account, no evaluation needed
+  - Illustrate     → Use examples to explain
+  - Elaborate      → Expand in detail on the given point
+  - Justify        → Defend a position with evidence
+  - Review         → Re-examine critically, assess strengths/weaknesses
+  - Elucidate      → Make clear, step-by-step explanation
+  - Enumerate      → List out with brief descriptions
+  - Outline        → Give main points without deep detail
+
+STEP 3 — QUALITY CHECK OF V1 ANSWER
+--------------------------------------
+Input    : V1 Answer + Demand Brief
+Process  : Claude evaluates the existing answer against a checklist:
+  - Does it address the directive word correctly?
+  - Are all sub-demands covered?
+  - Is the introduction strong (hook, context, thesis)?
+  - Is the body well-structured (headings/flow)?
+  - Are there current facts, data, committee reports, schemes cited?
+  - Are there relevant quotes (constitutional, judicial, commissions)?
+  - Is the conclusion conclusive (not just a summary)?
+  - Is the tone appropriate (analytical, not opinionated)?
+  - Word count: within expected range?
+Output   : Quality Report JSON:
+             { score: 0-10, issues: [], missing_elements: [], strengths: [] }
+
+STEP 4 — GENERATE V2 (IMPROVED ANSWER)
+----------------------------------------
+Input    : V1 Answer + Demand Brief + Quality Report
+Process  : Claude rewrites the answer incorporating:
+  - Correct directive word alignment
+  - Better introduction (quote/fact hook)
+  - Structured body with clear headings
+  - Latest data, figures, government schemes, committee names
+  - Impactful real-world examples
+  - Strong, decisive conclusion with a forward-looking statement
+  - UPSC answer style preserved (no bullet overload, balanced paragraphs)
+Output   : V2 Answer (text)
+
+STEP 5 — HUMAN REVIEW DASHBOARD
+---------------------------------
+Display  :
+  - Left panel  : V1 (original answer, read-only)
+  - Right panel : V2 (improved answer, editable)
+  - Middle/below: Diff view (line-level changes highlighted, GitHub-style)
+  - Quality Report summary visible (issues addressed by V2)
+  - Demand Brief visible (so reviewer knows what was targeted)
+
+Actions available to human:
+  - [Edit V2]        → Directly edit the right panel
+  - [Prompt Fix]     → Text box: "Add a point about X" or "The example of Y
+                       is wrong, use Z instead" — triggers a targeted Claude
+                       call that patches V2 without rewriting the whole answer
+  - [Regenerate V2]  → Full regeneration with updated context
+  - [Confirm & Save] → Saves confirmed V2 back to Google Sheet
+  - [Skip]           → Mark for later review
+
+STEP 6 — GEMINI LAYER (SUPPLEMENTARY ENRICHMENT)
+--------------------------------------------------
+Purpose  : If the human flags that V2 is missing something specific — a
+           recent fact, a specific data point, a court case — the Gemini API
+           is called for a targeted web-grounded lookup.
+Process  :
+  - Human types: "Missing: Latest SC judgment on Forest Rights Act"
+  - Gemini fetches/synthesizes that specific information
+  - The result is shown as a suggestion block
+  - Human clicks [Incorporate] → Claude weaves it into V2
+Why Gemini here: Gemini has better real-time/web-grounded retrieval.
+                 Claude handles reasoning, structure, and writing quality.
+
+
+================================================================================
+TECH STACK
+================================================================================
+
+Backend
+  - Python (FastAPI)
+  - File Upload: CSV or XLSX exported from Google Sheets (no API/OAuth needed)
+  - Anthropic SDK (Claude for demand extraction, QC, answer generation)
+  - Google Generative AI SDK (Gemini for fact enrichment)
+  - Diff generation: diff-match-patch library (word-level, not line-level)
+
+Frontend / Dashboard
+  - Streamlit (fast to build, perfect for internal review tools)
+  - File uploader widget for CSV/XLSX intake
+  - HTML diff rendering with green/red highlights
+
+Storage
+  - Uploaded CSV/XLSX is the source of truth on intake
+  - Local SQLite DB caches processing results (demand brief, QC, V2) so
+    nothing needs to be re-run if the app restarts mid-session
+  - On session end: export confirmed answers as a new CSV (re-importable
+    into Google Sheets by the user)
+
+Diff View
+  - Library: diff-match-patch (Google's library, word-level diffs)
+  - Render: HTML with <ins> (green) and <del> (red) tags, like GitHub
+
+
+================================================================================
+DATA SCHEMA (Google Sheet Structure)
+================================================================================
+
+Columns expected in the Google Sheet:
+  A - Year          (2023 / 2024 / 2025)
+  B - Paper         (GS1 / GS2 / GS3 / GS4)
+  C - Question_No   (e.g., Q1, Q2a)
+  D - Question_Text (full question)
+  E - V1_Answer     (existing answer to be reviewed)
+  F - V2_Answer     (confirmed improved answer — written back by tool)
+  G - Status        (Pending / In Review / Confirmed / Skipped)
+  H - QC_Score      (0-10, written by tool)
+  I - QC_Issues     (comma-separated issue list)
+  J - Reviewer_Notes (human's free text notes)
+
+
+================================================================================
+PROCESSING ORDER & BATCHING
+================================================================================
+
+- Process one question at a time through the dashboard (human-gated)
+- Background: pre-process Demand Brief + QC for all 240 questions on first run
+  so the dashboard loads instantly when human opens a question
+- Batch size for pre-processing: 10 questions at a time (API rate limits)
+- Estimated pre-processing time for all 240: ~15-20 minutes
+
+
+================================================================================
+QUALITY STANDARDS FOR V2 ANSWERS
+================================================================================
+
+A V2 answer must:
+  1. Open with a strong hook (statistic, quote, or provocative statement)
+  2. Address the directive word explicitly in tone and structure
+  3. Include at least 1 recent data point (post-2022)
+  4. Include at least 1 relevant committee/commission/report name
+  5. Include at least 1 real-world example (India-specific preferred)
+  6. Have a conclusion that goes beyond summary — suggests a way forward
+  7. Not exceed word limit by more than 50%
+  8. Feel "enriching" to the student — they should feel they learned something
+
+
+================================================================================
+PHASE-WISE BUILD PLAN
+================================================================================
+
+Phase 1 — Core Pipeline (No UI)
+  - CSV/XLSX file parsing (pandas)
+  - Demand extraction (Claude)
+  - QC check (Claude)
+  - V2 generation (Claude)
+  - Output to local SQLite + terminal JSON preview
+
+Phase 2 — Dashboard (Streamlit)
+  - V1 / V2 side-by-side
+  - Diff view
+  - Confirm & Save to sheet
+  - Skip / flag
+
+Phase 3 — Prompt Fix + Gemini Layer
+  - Human prompt → targeted patch
+  - Gemini fact enrichment integration
+
+Phase 4 — Polish
+  - Batch pre-processing with progress bar
+  - Status tracking (how many of 240 confirmed)
+  - Export final answers as formatted PDF / DOCX
+
+
+================================================================================
+OPEN QUESTIONS TO RESOLVE BEFORE BUILDING
+================================================================================
+
+1. Google Sheet ID / access credentials — need service account JSON
+2. Are answers in a single sheet or split by year/paper?
+3. Word limit per answer — is it fixed (150w / 250w) or per-question?
+4. Which Gemini model to use — gemini-1.5-pro or gemini-2.0-flash?
+5. Should V2 preserve V1 formatting style or freely restructure?
+6. Single reviewer or multiple reviewers (affects status tracking)?
+
+
+================================================================================
+END OF INSTRUCTIONS
+================================================================================
