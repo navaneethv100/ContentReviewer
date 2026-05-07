@@ -124,6 +124,34 @@ const RESPONSE_SCHEMA = {
   required: ['demand_brief', 'qc_report', 'v2_answer', 'v2_qc_report'],
 }
 
+async function fetchGroundedFacts(question: string, subject: string): Promise<string> {
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      contents: `You are a research assistant for UPSC CSE Mains answers. For the question below, use Google Search to find the most recent and relevant facts that should appear in a high-quality answer. Focus on post-2022 data only.
+
+Question: ${question}
+Subject: ${subject}
+
+Retrieve and list:
+1. Latest statistics, data points, and figures (with year)
+2. Recent government schemes, policies, and initiatives
+3. Relevant committee/commission/expert body reports
+4. Recent Supreme Court or High Court judgments (if applicable)
+5. International agreements, treaties, or rankings
+6. Recent developments, events, or changes in this area
+
+Be specific — include exact numbers, names, and dates. Only include verifiable facts.`,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    })
+    return response.text ?? ''
+  } catch {
+    return ''
+  }
+}
+
 export async function generateImprovedAnswer(
   question: string,
   marks: number,
@@ -132,6 +160,10 @@ export async function generateImprovedAnswer(
   year: string,
   v1Answer: string
 ): Promise<GenerateResult> {
+  // Step 1: grounded search for latest facts (runs in parallel with nothing yet)
+  const groundedFacts = await fetchGroundedFacts(question, subject)
+
+  // Step 2: structured generation using grounded facts as context
   const response = await ai.models.generateContent({
     model: MODEL,
     contents: `Please analyze and improve the following UPSC answer.
@@ -148,7 +180,7 @@ export async function generateImprovedAnswer(
 - Each point on its own line — never inline
 - If the question has multiple subparts, create a ### sub-heading for EACH one and address the numbered points under it
 
-**Existing V1 Answer:**
+${groundedFacts ? `**Latest Facts (from Google Search — use these to enrich V2):**\n${groundedFacts}\n` : ''}**Existing V1 Answer:**
 ${v1Answer}`,
     config: {
       systemInstruction: SYSTEM_PROMPT,
