@@ -235,7 +235,7 @@ function QCCard({ report, title, subtitle, theme }: QCCardProps) {
         </div>
         <div className="flex items-center gap-3">
           <div className={`flex flex-col items-center border rounded-lg px-3 py-1 ${scoreRing}`}>
-            <span className="text-lg font-bold leading-none">{score}</span>
+            <span className="text-lg font-bold leading-none">{score}<span className="text-xs font-medium opacity-60">/10</span></span>
             <span className="text-[9px] font-semibold uppercase tracking-wide opacity-80 leading-none mt-0.5">{scoreLabel}</span>
           </div>
           <Chevron open={open} />
